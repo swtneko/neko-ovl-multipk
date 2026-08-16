@@ -31,6 +31,8 @@ button.blue{background:#245d83;border-color:#347fb1}
 .idol{background:#292931;border-radius:9px;padding:8px;margin:6px 0}
 .idol-top{display:flex;gap:7px;align-items:center}
 .avatar{width:34px;height:34px;border-radius:50%;background:#444 center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-weight:bold;flex:none}
+.avatar-preview{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#333;flex:none;display:none;border:1px solid #555}
+.avatar-preview.show{display:block}
 .name{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .score{font-weight:700;color:#ffd66e}
 .pk-pos{background:#292931;border-radius:9px;padding:9px;margin:7px 0}
@@ -99,11 +101,15 @@ button.blue{background:#245d83;border-color:#347fb1}
         <div id="idolTabSingle" class="tab-panel on">
           <div class="row">
             <input id="idolName" placeholder="Tên idol" style="flex:1">
-            <input id="idolTikTok" placeholder="TikTok ID / @username" style="flex:1" onblur="autoAvatar('idolTikTok','idolAvatar','idolAvatarStatus')">
-            <button class="primary" onclick="addIdol()">➕ Thêm</button>
+            <input id="idolTikTok" placeholder="TikTok ID / @username" style="flex:1"
+                   oninput="clearAvatarPreviewIfEmpty()">
+            <button type="button" onclick="checkAvatar()">🔍 Kiểm tra avatar</button>
+            <button class="primary" id="addIdolBtn" onclick="addIdol()">➕ Thêm</button>
           </div>
           <div class="row" style="margin-bottom:0">
-            <input id="idolAvatar" placeholder="Link ảnh avatar (tùy chọn / tự điền)" style="flex:1">
+            <img id="idolAvatarPreview" class="avatar-preview" alt="avatar">
+            <input id="idolAvatar" placeholder="Link ảnh avatar (tùy chọn / tự điền)" style="flex:1"
+                   oninput="showAvatarPreview('idolAvatar','idolAvatarPreview')">
             <span id="idolAvatarStatus" class="small"></span>
           </div>
         </div>
@@ -328,22 +334,62 @@ function setDuration(){
   const s=Math.max(0,Math.min(59,parseInt(document.getElementById("seconds").value||0)));
   post("/api/timer/duration",{seconds:m*60+s});
 }
-async function autoAvatar(idInput,avatarInput,statusId){
+function showAvatarPreview(avatarInput,previewId){
+  const avatar=document.getElementById(avatarInput);
+  const preview=document.getElementById(previewId);
+  if(!avatar||!preview)return;
+  const url=avatar.value.trim();
+  if(url){
+    preview.src=url;
+    preview.classList.add("show");
+  }else{
+    preview.classList.remove("show");
+    preview.removeAttribute("src");
+  }
+}
+
+function clearAvatarPreviewIfEmpty(){
+  // Nếu người dùng xóa hết TikTok ID và chưa tự nhập link avatar thủ công,
+  // ẩn preview cũ đi để tránh hiểu nhầm avatar còn hiệu lực.
+  const tiktokId=document.getElementById("idolTikTok").value.trim();
+  const avatarVal=document.getElementById("idolAvatar").value.trim();
+  if(!tiktokId && !avatarVal){
+    const preview=document.getElementById("idolAvatarPreview");
+    if(preview){preview.classList.remove("show");preview.removeAttribute("src");}
+    document.getElementById("idolAvatarStatus").textContent="";
+  }
+}
+
+async function checkAvatar(){
+  // Nút riêng: chỉ chạy khi bấm, không tự động khi gõ/rời ô.
+  await autoAvatar("idolTikTok","idolAvatar","idolAvatarStatus","idolAvatarPreview");
+}
+
+async function autoAvatar(idInput,avatarInput,statusId,previewId){
   const id=document.getElementById(idInput);
   const avatar=document.getElementById(avatarInput);
   const status=document.getElementById(statusId);
+  const preview=previewId?document.getElementById(previewId):null;
   if(!id||!avatar)return;
-  const username=id.value.trim();
-  if(!username)return;
+  const username=id.value.trim().replace(/^@/,"");
+  if(!username){
+    if(status)status.textContent="";
+    if(preview){preview.classList.remove("show");preview.removeAttribute("src");}
+    return;
+  }
   if(status)status.textContent="⏳ Đang lấy avatar...";
   try{
     const r=await fetch("/api/tiktok/avatar?username="+encodeURIComponent(username));
     const data=await r.json();
+    // Tránh ghi đè nếu người dùng đã đổi username trong lúc chờ phản hồi.
+    if(id.value.trim().replace(/^@/,"")!==username)return;
     if(data.ok){
       avatar.value=data.avatar;
       if(status)status.textContent="✅ Avatar TikTok";
+      if(preview){preview.src=data.avatar;preview.classList.add("show");}
     }else{
       if(status)status.textContent="⚠ "+(data.error||"Không lấy được avatar");
+      if(preview){preview.classList.remove("show");preview.removeAttribute("src");}
     }
   }catch(e){
     if(status)status.textContent="⚠ Không kết nối được";
@@ -404,18 +450,24 @@ async function addBatch(){
 async function addIdol(){
   const name=document.getElementById("idolName").value.trim();
   const tiktok_id=document.getElementById("idolTikTok").value.trim().replace(/^@/,"");
-  let avatar=document.getElementById("idolAvatar").value.trim();
+  const avatar=document.getElementById("idolAvatar").value.trim();
   if(!name)return;
-  if(tiktok_id && !avatar){
-    await autoAvatar("idolTikTok","idolAvatar","idolAvatarStatus");
-    avatar=document.getElementById("idolAvatar").value.trim();
-  }
-  post("/api/idol",{name,avatar,tiktok_id}).then(()=>{
+
+  // Không tự lấy avatar ở đây nữa — chỉ thêm với avatar hiện có trong ô
+  // (nếu muốn có avatar thì bấm "🔍 Kiểm tra avatar" trước).
+  const btn=document.getElementById("addIdolBtn");
+  if(btn){btn.disabled=true;btn.textContent="⏳ Đang thêm...";}
+  try{
+    await post("/api/idol",{name,avatar,tiktok_id});
     document.getElementById("idolName").value="";
     document.getElementById("idolTikTok").value="";
     document.getElementById("idolAvatar").value="";
     document.getElementById("idolAvatarStatus").textContent="";
-  });
+    const preview=document.getElementById("idolAvatarPreview");
+    if(preview){preview.classList.remove("show");preview.removeAttribute("src");}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="➕ Thêm";}
+  }
 }
 
 function buildPkFields(){
