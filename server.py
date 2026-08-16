@@ -16,11 +16,10 @@ import json
 import uuid
 import logging
 import re
-from html import unescape
 from typing import Optional
 from urllib.parse import quote
-from urllib.request import Request, urlopen
 
+import requests
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -681,31 +680,166 @@ def normalize_tiktok_id(value: str) -> str:
     return value.lstrip("@").strip()
 
 
-def fetch_tiktok_avatar(tiktok_id: str) -> str:
-    username = normalize_tiktok_id(tiktok_id)
-    if not username:
-        return ""
-    url = f"https://www.tiktok.com/@{quote(username)}"
-    req = Request(url, headers={
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/150 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-    })
-    with urlopen(req, timeout=8) as response:
-        html = response.read().decode("utf-8", "ignore")
+_TIKTOK_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.tiktok.com/",
+}
 
-    # TikTok currently exposes the profile image in several places.
+# Session dùng chung để giữ cookie giữa các lần gọi — TikTok thường trả về
+# một trang "rút gọn" không nhúng JSON nếu request không có cookie hợp lệ.
+_tiktok_session = requests.Session()
+_tiktok_session.headers.update(_TIKTOK_HEADERS)
+_tiktok_cookies_ready = False
+
+
+def _ensure_tiktok_cookies():
+    """
+    Ghé trang chủ TikTok một lần để lấy cookie (ttwid, tt_csrf_token, ...).
+    Request tới trang profile mà không có cookie này rất hay bị TikTok trả về
+    một trang rỗng/chặn thay vì trang thật — đây là nguyên nhân phổ biến nhất
+    gây lỗi "không tìm thấy script".
+    """
+    global _tiktok_cookies_ready
+    if _tiktok_cookies_ready:
+        return
+    try:
+        r = _tiktok_session.get("https://www.tiktok.com/", timeout=15)
+        logging.info(
+            "TikTok avatar: bootstrap cookie -> HTTP %s, %d cookie(s)",
+            r.status_code, len(_tiktok_session.cookies),
+        )
+    except requests.RequestException as exc:
+        logging.warning("TikTok avatar: bootstrap cookie lỗi: %s", exc)
+    _tiktok_cookies_ready = True
+
+
+def _looks_like_block_page(html: str) -> bool:
+    head = html[:4000].lower()
+    markers = ["verify to continue", "captcha", "checking your browser", "access denied", "something went wrong"]
+    return any(m in head for m in markers)
+
+
+def _find_tiktok_user_info(obj):
+    """Đệ quy tìm object user chứa avatar trong JSON lồng nhau của TikTok."""
+    if isinstance(obj, dict):
+        if "avatarLarger" in obj or "avatarMedium" in obj:
+            return obj
+        if "userInfo" in obj and isinstance(obj["userInfo"], dict):
+            found = _find_tiktok_user_info(obj["userInfo"])
+            if found:
+                return found
+            user = obj["userInfo"].get("user")
+            if isinstance(user, dict):
+                return user
+        for value in obj.values():
+            result = _find_tiktok_user_info(value)
+            if result:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = _find_tiktok_user_info(item)
+            if result:
+                return result
+    return None
+
+
+def _extract_tiktok_json(html: str):
+    """Trả về (data, script_name) từ script JSON nhúng trong trang, hoặc (None, lý do lỗi)."""
+    for script_id in ("__UNIVERSAL_DATA_FOR_REHYDRATION__", "SIGI_STATE"):
+        match = re.search(
+            rf'<script id="{script_id}"[^>]*>(.*?)</script>', html, re.DOTALL
+        )
+        if not match:
+            continue
+        try:
+            return json.loads(match.group(1)), script_id
+        except (json.JSONDecodeError, ValueError) as exc:
+            return None, f"tìm thấy script {script_id} nhưng JSON lỗi ({exc})"
+    return None, "không tìm thấy script __UNIVERSAL_DATA_FOR_REHYDRATION__/SIGI_STATE"
+
+
+def _fallback_regex_avatar(html: str) -> str:
+    """Phương án dự phòng: mò trực tiếp trong HTML nếu cách đọc JSON không ăn."""
     patterns = [
+        r'"avatarLarger":"(https?:\\/\\/[^"\\]+)',
+        r'"avatarMedium":"(https?:\\/\\/[^"\\]+)',
         r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)',
         r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image',
-        r'"avatarLarger":"(https?:\\/\\/[^"\]+)',
-        r'"avatarMedium":"(https?:\\/\\/[^"\]+)',
     ]
     for pattern in patterns:
         m = re.search(pattern, html, re.I)
         if m:
-            avatar = unescape(m.group(1)).replace("\\/", "/")
+            avatar = m.group(1).replace("\\/", "/").replace("&amp;", "&")
             if avatar.startswith("http"):
                 return avatar
+    return ""
+
+
+def fetch_tiktok_avatar(tiktok_id: str) -> str:
+    """
+    Lấy link avatar TikTok:
+    1) Bootstrap cookie qua trang chủ (chỉ 1 lần).
+    2) Đọc JSON (__UNIVERSAL_DATA_FOR_REHYDRATION__ / SIGI_STATE) nhúng trong trang.
+    3) Nếu không được, dò regex avatarLarger/og:image trong HTML thô làm dự phòng.
+    4) Thử lại tối đa 2 lần nếu lần đầu không ra kết quả (TikTok hay chặn/trả trang rỗng
+       không ổn định — thử lại thường ăn hơn).
+    """
+    username = normalize_tiktok_id(tiktok_id)
+    if not username:
+        return ""
+
+    _ensure_tiktok_cookies()
+
+    url = f"https://www.tiktok.com/@{quote(username)}"
+    last_html = ""
+    for attempt in range(1, 3):
+        try:
+            resp = _tiktok_session.get(url, timeout=15, allow_redirects=True)
+        except requests.RequestException as exc:
+            logging.warning("TikTok avatar: lỗi kết nối tới @%s (lần %d): %s", username, attempt, exc)
+            continue
+
+        if resp.status_code != 200:
+            logging.warning(
+                "TikTok avatar: @%s trả về HTTP %s (lần %d, có thể user không tồn tại hoặc bị chặn)",
+                username, resp.status_code, attempt,
+            )
+            continue
+
+        html = resp.text
+        last_html = html
+        logging.info("TikTok avatar: @%s -> tải trang OK (lần %d), %d ký tự HTML", username, attempt, len(html))
+
+        data, info = _extract_tiktok_json(html)
+        if data is not None:
+            user = _find_tiktok_user_info(data)
+            if user:
+                avatar = user.get("avatarLarger") or user.get("avatarMedium") or user.get("avatarThumb") or ""
+                if str(avatar).startswith("http"):
+                    return avatar
+                logging.warning("TikTok avatar: @%s -> có %s nhưng object user không có avatar hợp lệ (lần %d)", username, info, attempt)
+            else:
+                logging.warning("TikTok avatar: @%s -> có %s nhưng không tìm thấy userInfo/avatarLarger trong JSON (lần %d)", username, info, attempt)
+        else:
+            logging.warning("TikTok avatar: @%s -> %s (lần %d)", username, info, attempt)
+
+        fallback = _fallback_regex_avatar(html)
+        if fallback:
+            logging.info("TikTok avatar: @%s -> lấy được avatar qua regex dự phòng (lần %d)", username, attempt)
+            return fallback
+
+    if last_html:
+        if _looks_like_block_page(last_html):
+            logging.warning("TikTok avatar: @%s -> có vẻ TikTok trả trang chặn bot/captcha (IP server có thể bị TikTok chặn)", username)
+        snippet = re.sub(r"\s+", " ", last_html[:400]).strip()
+        logging.warning("TikTok avatar: @%s -> đoạn đầu HTML nhận được: %r", username, snippet)
+
     return ""
 
 
