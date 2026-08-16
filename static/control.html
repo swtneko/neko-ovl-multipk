@@ -2,12 +2,13 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>MultiPK Control</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:#15151a;color:#eee;font-family:Arial,sans-serif;padding:12px}
-.layout{display:grid;grid-template-columns:1fr 1.35fr;gap:12px;max-width:1200px;margin:auto}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:#15151a;color:#eee;font-family:Arial,sans-serif;padding:8px}
+.layout{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;max-width:1200px;margin:auto}
 .section{background:#202027;border:1px solid #30303a;border-radius:12px;padding:12px;margin-bottom:10px}
 h2{font-size:14px;margin:0 0 10px;color:#fff}
 h3{font-size:12px;color:#aaa;margin:12px 0 7px}
@@ -66,13 +67,72 @@ button.blue{background:#245d83;border-color:#347fb1}
 .tab-panel textarea{width:100%;resize:vertical;min-height:82px;line-height:1.45}
 .hint{font-size:11px;color:#888;margin:0 0 6px}
 .idol.hidden{display:none}
-.gift-catalog{margin-top:8px;border:1px solid #3f3f4a;border-radius:8px;padding:8px;background:#18181e}.gift-catalog-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.gift-catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px;margin-top:7px;max-height:260px;overflow:auto}.catalog-gift{display:flex;align-items:center;gap:7px;padding:6px;border:1px solid #33333d;border-radius:7px;background:#202027;color:#eee;text-align:left;cursor:pointer}.catalog-gift:hover{border-color:#7656d9;background:#272432}.catalog-gift img{width:32px;height:32px;object-fit:contain}.catalog-gift .cg-name{font-size:11px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.catalog-gift .cg-meta{font-size:9px;color:#999;display:block}.catalog-empty{font-size:10px;color:#777;padding:8px}.catalog-status{font-size:10px;color:#aaa;margin-top:5px}@media(max-width:800px){.layout{grid-template-columns:1fr}}
+.gift-catalog{margin-top:8px;border:1px solid #3f3f4a;border-radius:8px;padding:8px;background:#18181e}.gift-catalog-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.gift-catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px;margin-top:7px;max-height:260px;overflow:auto}.catalog-gift{display:flex;align-items:center;gap:7px;padding:6px;border:1px solid #33333d;border-radius:7px;background:#202027;color:#eee;text-align:left;cursor:pointer}.catalog-gift:hover{border-color:#7656d9;background:#272432}.catalog-gift img{width:32px;height:32px;object-fit:contain}.catalog-gift .cg-name{font-size:11px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.catalog-gift .cg-meta{font-size:9px;color:#999;display:block}.catalog-empty{font-size:10px;color:#777;padding:8px}.catalog-status{font-size:10px;color:#aaa;margin-top:5px}@media(max-width:600px){body{padding:4px}.layout{gap:4px}.section{padding:8px;border-radius:8px;margin-bottom:6px}input,select,button{font-size:11px;padding:5px 6px}.tab-btn{padding:4px 6px;font-size:10px}.pk-actions button{min-width:0;font-size:10px;padding:5px 4px}}
 
 .pk-gift-select-wrap{display:flex;gap:6px;align-items:stretch;margin-top:6px}.pk-gift-select{flex:1;min-width:0;text-align:left;background:#202027;border:1px solid #3f3f4a;padding:6px 8px;min-height:46px}.pk-gift-select:hover{border-color:#7656d9;background:#292431}.pk-gift-select>span{display:flex;align-items:center;gap:8px;min-width:0}.pk-gift-select img{width:32px;height:32px;object-fit:contain;flex:none}.pk-gift-select b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pk-gift-select small{display:block;color:#999;font-size:9px;margin-top:2px}.pk-gift-placeholder{color:#aaa;font-size:11px}.pk-gift-clear{width:34px;background:#33333d}.pk-gift-picker{display:none;position:fixed;z-index:99999;width:350px;max-width:calc(100vw - 16px);background:#202027;border:1px solid #4a4a55;border-radius:9px;box-shadow:0 12px 35px rgba(0,0,0,.55);padding:8px}.pk-gift-picker.show{display:block}.pk-gift-picker-head{display:flex;align-items:center;gap:7px;margin-bottom:7px}.pk-gift-picker-head b{flex:1;font-size:12px}.pk-gift-picker-head span{font-size:9px;color:#888}.pk-gift-picker-head button{padding:3px 7px}.pk-gift-picker>input{width:100%;margin-bottom:6px}.pk-gift-picker-list{max-height:350px;overflow:auto;display:flex;flex-direction:column;gap:3px}.pk-gift-item{display:flex;align-items:center;gap:8px;width:100%;padding:6px 7px;background:#292930;border:1px solid #3b3b46;border-radius:6px;text-align:left;color:#eee}.pk-gift-item:hover,.pk-gift-item.selected{background:#34313e;border-color:#7656d9}.pk-gift-item img{width:34px;height:34px;object-fit:contain;flex:none}.pk-gift-item-text{min-width:0;display:flex;flex-direction:column}.pk-gift-item-text b{font-size:11px;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pk-gift-item-text small{font-size:9px;color:#999;margin-top:2px}.pk-gift-empty{padding:16px;text-align:center;color:#777;font-size:11px}
 </style>
 </head>
 <body>
 <div class="layout">
+  <div>
+    <div class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px">
+        <h2 style="margin:0">👤 THÊM IDOL</h2>
+        <div style="font-size:10px;background:#1a1a20;border:1px solid #3a3a44;border-radius:6px;padding:2px">
+          <span style="background:#7656d9;color:#fff;border-radius:4px;padding:2px 6px">VN</span>
+          <span style="color:#888;padding:2px 5px">EN</span>
+        </div>
+      </div>
+
+      <div id="idolSearchWrap">
+        <input id="idolSearch" placeholder="🔍 Tìm idol..." oninput="filterIdols(this.value)">
+        <button id="idolSearchClear" onclick="clearSearch()" title="Xóa tìm kiếm">✕</button>
+      </div>
+
+      <div class="tabs">
+        <div class="tab-btn on" id="tabBtnSingle" onclick="switchIdolTab('single')">Thêm 1</div>
+        <div class="tab-btn" id="tabBtnBatch" onclick="switchIdolTab('batch')">Hàng loạt</div>
+        <div class="tab-btn" id="tabBtnIo" onclick="switchIdolTab('io')">Import/Export</div>
+      </div>
+      <div class="tab-body">
+        <div id="idolTabSingle" class="tab-panel on">
+          <div class="row">
+            <input id="idolName" placeholder="Tên idol" style="flex:1">
+            <input id="idolTikTok" placeholder="TikTok ID / @username" style="flex:1" onblur="autoAvatar('idolTikTok','idolAvatar','idolAvatarStatus')">
+            <button class="primary" onclick="addIdol()">➕ Thêm</button>
+          </div>
+          <div class="row" style="margin-bottom:0">
+            <input id="idolAvatar" placeholder="Link ảnh avatar (tùy chọn / tự điền)" style="flex:1">
+            <span id="idolAvatarStatus" class="small"></span>
+          </div>
+        </div>
+
+        <div id="idolTabBatch" class="tab-panel">
+          <div class="hint">Mỗi idol một dòng. Có thể nhập <b>Tên idol</b> hoặc <b>Tên idol | @tiktok_id</b>.</div>
+          <textarea id="batchNames" placeholder="Idol A
+Idol B
+Idol C | @username"></textarea>
+          <div class="row" style="margin-top:6px;margin-bottom:0">
+            <button class="primary" onclick="addBatch()">➕ Thêm tất cả</button>
+            <span id="batchStatus" class="small"></span>
+          </div>
+        </div>
+
+        <div id="idolTabIo" class="tab-panel">
+          <div class="hint">Định dạng: <b>name|score|link_avatar</b> (mỗi idol 1 dòng). link_avatar có thể bỏ trống.</div>
+          <textarea id="idolIoText" style="width:100%;resize:vertical;min-height:100px;line-height:1.45" placeholder="Idol A|100|https://link-avatar.com/a.jpg&#10;Idol B|50|https://link-avatar.com/b.jpg&#10;Idol C|0"></textarea>
+          <div class="row" style="margin-top:6px;margin-bottom:0;gap:6px">
+            <button class="primary" onclick="importIdols()" style="flex:1">📥 Import (Thêm)</button>
+            <button class="blue" onclick="exportIdols()" style="flex:1">📤 Export (Xuất)</button>
+            <span id="ioStatus" class="small"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="idols"></div>
+    </div>
+  </div>
+
   <div>
     <div class="section">
       <h2>⚔️ MultiPK</h2>
@@ -91,10 +151,6 @@ button.blue{background:#245d83;border-color:#347fb1}
 
       <div class="pk-actions">
         <button class="primary" onclick="savePK()">💾 Lưu cấu hình</button>
-        <button class="green" onclick="pkAction('start')">▶ Bắt đầu</button>
-        <button class="orange" onclick="pkAction('pause')">⏸ Tạm dừng</button>
-        <button class="red" onclick="pkAction('end')">⏹ Kết thúc</button>
-        <button onclick="pkAction('reset')">🔄 Reset</button>
       </div>
     </div>
 
@@ -137,52 +193,6 @@ button.blue{background:#245d83;border-color:#347fb1}
     </div>
   </div>
 
-  <div>
-    <div class="section">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px">
-        <h2 style="margin:0">👤 THÊM IDOL</h2>
-        <div style="font-size:10px;background:#1a1a20;border:1px solid #3a3a44;border-radius:6px;padding:2px">
-          <span style="background:#7656d9;color:#fff;border-radius:4px;padding:2px 6px">VN</span>
-          <span style="color:#888;padding:2px 5px">EN</span>
-        </div>
-      </div>
-
-      <div id="idolSearchWrap">
-        <input id="idolSearch" placeholder="🔍 Tìm idol..." oninput="filterIdols(this.value)">
-        <button id="idolSearchClear" onclick="clearSearch()" title="Xóa tìm kiếm">✕</button>
-      </div>
-
-      <div class="tabs">
-        <div class="tab-btn on" id="tabBtnSingle" onclick="switchIdolTab('single')">Thêm 1</div>
-        <div class="tab-btn" id="tabBtnBatch" onclick="switchIdolTab('batch')">Hàng loạt</div>
-      </div>
-      <div class="tab-body">
-        <div id="idolTabSingle" class="tab-panel on">
-          <div class="row">
-            <input id="idolName" placeholder="Tên idol" style="flex:1">
-            <input id="idolTikTok" placeholder="TikTok ID / @username" style="flex:1" onblur="autoAvatar('idolTikTok','idolAvatar','idolAvatarStatus')">
-            <button class="primary" onclick="addIdol()">➕ Thêm</button>
-          </div>
-          <div class="row" style="margin-bottom:0">
-            <input id="idolAvatar" placeholder="Link ảnh avatar (tùy chọn / tự điền)" style="flex:1">
-            <span id="idolAvatarStatus" class="small"></span>
-          </div>
-        </div>
-
-        <div id="idolTabBatch" class="tab-panel">
-          <div class="hint">Mỗi idol một dòng. Có thể nhập <b>Tên idol</b> hoặc <b>Tên idol | @tiktok_id</b>.</div>
-          <textarea id="batchNames" placeholder="Idol A
-Idol B
-Idol C | @username"></textarea>
-          <div class="row" style="margin-top:6px;margin-bottom:0">
-            <button class="primary" onclick="addBatch()">➕ Thêm tất cả</button>
-            <span id="batchStatus" class="small"></span>
-          </div>
-        </div>
-      </div>
-
-      <div id="idols"></div>
-    </div>
   </div>
 </div>
 
@@ -343,8 +353,10 @@ let idolSearchQ="";
 function switchIdolTab(name){
   document.getElementById("idolTabSingle").classList.toggle("on",name==="single");
   document.getElementById("idolTabBatch").classList.toggle("on",name==="batch");
+  document.getElementById("idolTabIo").classList.toggle("on",name==="io");
   document.getElementById("tabBtnSingle").classList.toggle("on",name==="single");
   document.getElementById("tabBtnBatch").classList.toggle("on",name==="batch");
+  document.getElementById("tabBtnIo").classList.toggle("on",name==="io");
 }
 function filterIdols(q){
   idolSearchQ=String(q||"").trim().toLowerCase();
@@ -647,6 +659,38 @@ function connect(){
   };
   ws.onclose=()=>setTimeout(connect,1500);
 }
+function exportIdols(){
+  const idols=(state?.idols||[]).slice().sort((a,b)=>b.score-a.score);
+  const status=document.getElementById("ioStatus");
+  if(!idols.length){if(status)status.textContent="⚠ Chưa có idol";return;}
+  const lines=idols.map(i=>[i.name||"",Number(i.score||0),i.avatar||""].join("|"));
+  const ta=document.getElementById("idolIoText");
+  if(ta) ta.value=lines.join("\n");
+  if(status){status.textContent="✔ Đã export "+idols.length+" idol";setTimeout(()=>status.textContent="",3000);}
+}
+
+async function importIdols(){
+  const ta=document.getElementById("idolIoText");
+  const status=document.getElementById("ioStatus");
+  const text=ta?ta.value:"";
+  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length){if(status)status.textContent="⚠ Textarea trống";return;}
+  if(status)status.textContent="⏳ Đang import...";
+  let added=0,skipped=0;
+  for(const line of lines){
+    const parts=line.split("|");
+    const name=(parts[0]||"").trim();
+    const score=parseInt(parts[1]||"0",10)||0;
+    const avatar=(parts[2]||"").trim();
+    if(!name){skipped++;continue;}
+    try{
+      const r=await post("/api/idol",{name,avatar,score});
+      if(r.ok)added++; else skipped++;
+    }catch(e){skipped++;}
+  }
+  if(status){status.textContent="✔ "+added+" thêm"+(skipped?" · "+skipped+" lỗi":"");setTimeout(()=>status.textContent="",4000);}
+}
+
 document.getElementById("idolSearchClear").style.display="none";
 buildPkGiftPicker();
 buildPkFields();
