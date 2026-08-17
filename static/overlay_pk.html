@@ -429,15 +429,18 @@ function render() {
       anchorRow.appendChild(col);
     });
   } else {
-    // Chỉ update width → transition chạy mượt
+    // Update width + avatar + tên → không cần reload khi thay người
     positions.forEach((pos, idx) => {
       const col = anchorCols[idx];
       const newW = widthPct(pos.score) + "%";
       if (col.style.width !== newW) {
-        requestAnimationFrame(() => {
-          col.style.width = newW;
-        });
+        requestAnimationFrame(() => { col.style.width = newW; });
       }
+      const avatarEl = col.querySelector(".avatar");
+      const newSrc = getAvatarUrl(pos);
+      if (avatarEl && avatarEl.src !== newSrc) avatarEl.src = newSrc;
+      const nicknameEl = col.querySelector(".nickname");
+      if (nicknameEl && nicknameEl.textContent !== pos.name) nicknameEl.textContent = pos.name;
     });
   }
 
@@ -517,9 +520,22 @@ function render() {
       const gCol = existingGCols[idx];
       const newW = widthPct(pos.score) + "%";
       if (gCol.style.width !== newW) {
-        requestAnimationFrame(() => {
-          gCol.style.width = newW;
-        });
+        requestAnimationFrame(() => { gCol.style.width = newW; });
+      }
+      // Cập nhật gift icon khi thay người
+      const wrapper = gCol.querySelector(".gift-icons-wrapper");
+      if (wrapper) {
+        let giftImg = wrapper.querySelector(".gift-icon");
+        if (pos.gift_img) {
+          if (!giftImg) {
+            giftImg = document.createElement("img");
+            giftImg.className = "gift-icon gift-0";
+            wrapper.appendChild(giftImg);
+          }
+          if (giftImg.src !== pos.gift_img) giftImg.src = pos.gift_img;
+        } else if (giftImg) {
+          giftImg.remove();
+        }
       }
     });
   }

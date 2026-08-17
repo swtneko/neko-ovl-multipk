@@ -329,11 +329,11 @@ async def connect_room(unique_id: str):
         else:
             effective_repeat = 0
 
-        # Nếu một gift không streak được gửi lại, repeat_count thường quay về 1.
-        # Khi đó reset bộ đếm để lần gửi mới vẫn được tính.
-        if not streaking and effective_repeat == 0:
-            pk_gift_streaks[streak_key] = 1
-            effective_repeat = 1
+        # Khi combo kết thúc (streaking=False), reset bộ đếm để lần gửi
+        # tiếp theo của cùng gift_id được tính lại từ đầu.
+        # KHÔNG cộng thêm điểm ở đây — điểm đã được tính đủ qua các event trước.
+        if not streaking:
+            pk_gift_streaks.pop(streak_key, None)
 
         diamonds = effective_repeat * diamond_count
         user = getattr(event, "user", None)
