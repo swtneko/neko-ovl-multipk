@@ -54,8 +54,6 @@
     justify-content: flex-start;
     border-radius: 6px;
     height: 20px;
-    transition: width 0.5s ease-out;
-    will-change: width;
   }
   .widget-multipk-anchor-info .anchor-column .avatar-container {
     display: flex;
@@ -149,8 +147,6 @@
     height: 100%;
     display: flex;
     align-items: center;
-    transition: width 0.5s ease-out;
-    will-change: width;
   }
   .widget-multipk-bar .position-part .score {
     position: absolute;
@@ -216,8 +212,6 @@
     align-items: flex-start;
     justify-content: flex-start;
     margin-left: 1px;
-    transition: width 0.5s ease-out;
-    will-change: width;
   }
   .widget-multipk-gift-info .gift-container {
     display: flex;
@@ -285,6 +279,23 @@
     justify-content: center;
     align-items: center;
     z-index: 1;
+    transition: background 0.3s ease;
+  }
+  .widget-multipk-bottom-count.urgent {
+    animation: timerUrgentFlash 0.6s ease-in-out infinite alternate;
+  }
+
+  /* === ANIMATIONS === */
+
+  /* Bar width transition mượt */
+  .widget-multipk-bar .position-part {
+    transition: width 0.5s ease-out;
+  }
+  .widget-multipk-anchor-info .anchor-column {
+    transition: width 0.5s ease-out;
+  }
+  .widget-multipk-gift-info .gifts-column {
+    transition: width 0.5s ease-out;
   }
 
 </style>
@@ -396,73 +407,122 @@ function render() {
     return (widthPx(score) / BAR_PX) * 100;
   }
 
-  // 1. Render Hàng Avatar + Tên
+  // 1. Render Hàng Avatar + Tên — giữ DOM, chỉ update width
   const anchorRow = document.getElementById("anchor-row");
-  anchorRow.innerHTML = "";
-  positions.forEach((pos, idx) => {
-    const isLeading = pos.score === maxScore && maxScore > 0;
-    const posNum    = idx + 1;
-    const col       = document.createElement("div");
-    col.className   = "anchor-column";
-    col.style.width = widthPct(pos.score) + "%";
-    col.innerHTML   = `
-      <div class="avatar-container">
-        <img class="avatar position-${posNum}-avatar" src="${getAvatarUrl(pos)}">
-        
-      </div>
-      <div class="nickname-container avatar-display position-${posNum}-nickname">
-        <span class="nickname">${pos.name}</span>
-      </div>
-    `;
-    anchorRow.appendChild(col);
-  });
-
-  // 2. Render Thanh Bar + Hiệu ứng No.1
-  const pkBarContainer = document.getElementById("pk-bar-container");
-  pkBarContainer.innerHTML = "";
-  positions.forEach((pos, idx) => {
-    const posNum    = idx + 1;
-    const isLeading = pos.score === maxScore && maxScore > 0;
-    const part      = document.createElement("div");
-    part.className  = `position-part position-${posNum}`;
-    part.style.width = widthPct(pos.score) + "%";
-
-    const scoreText = isLeading
-      ? `No.1(${pos.score.toLocaleString()})`
-      : pos.score.toLocaleString();
-    part.innerHTML = `<span class="score position-${posNum}-score score-left-aligned">${scoreText}</span>`;
-
-    if (isLeading) {
-      const effect = document.createElement("div");
-      effect.className = `widget-multipk-bar-effect${idx === n - 1 ? ' last-position' : ''}`;
-      part.appendChild(effect);
-    }
-
-    pkBarContainer.appendChild(part);
-    if (idx < n - 1) {
-      const sep = document.createElement("div");
-      sep.className = "widget-multipk-bar-separator";
-      pkBarContainer.appendChild(sep);
-    }
-  });
-
-  // 3. Render Top Gifters (gift_img từ positions, không có viewer gifters list nên bỏ avatars)
-  const giftRow = document.getElementById("gift-row");
-  giftRow.innerHTML = "";
-  positions.forEach((pos, idx) => {
-    const gCol      = document.createElement("div");
-    gCol.className  = "gifts-column";
-    gCol.style.width = widthPct(pos.score) + "%";
-    gCol.innerHTML  = `
-      <div class="gift-container">
-        <div class="gift-icons-wrapper">
-          ${pos.gift_img ? `<img src="${pos.gift_img}" alt="gift" class="gift-icon gift-0">` : ''}
+  const anchorCols = anchorRow.querySelectorAll(".anchor-column");
+  if (anchorCols.length !== n) {
+    // Số người thay đổi → rebuild
+    anchorRow.innerHTML = "";
+    positions.forEach((pos, idx) => {
+      const posNum = idx + 1;
+      const col = document.createElement("div");
+      col.className = "anchor-column";
+      col.style.width = widthPct(pos.score) + "%";
+      col.innerHTML = `
+        <div class="avatar-container">
+          <img class="avatar position-${posNum}-avatar" src="${getAvatarUrl(pos)}">
         </div>
-        <div class="user-avatars"></div>
-      </div>
-    `;
-    giftRow.appendChild(gCol);
-  });
+        <div class="nickname-container avatar-display position-${posNum}-nickname">
+          <span class="nickname">${pos.name}</span>
+        </div>
+      `;
+      anchorRow.appendChild(col);
+    });
+  } else {
+    // Chỉ update width → transition chạy mượt
+    positions.forEach((pos, idx) => {
+      const col = anchorCols[idx];
+      const newW = widthPct(pos.score) + "%";
+      if (col.style.width !== newW) {
+        requestAnimationFrame(() => {
+          col.style.width = newW;
+        });
+      }
+    });
+  }
+
+  // 2. Render Thanh Bar — giữ DOM, chỉ update width + score text
+  const pkBarContainer = document.getElementById("pk-bar-container");
+  const existingParts = pkBarContainer.querySelectorAll(".position-part");
+  if (existingParts.length !== n) {
+    // Số người thay đổi → rebuild
+    pkBarContainer.innerHTML = "";
+    positions.forEach((pos, idx) => {
+      const posNum    = idx + 1;
+      const isLeading = pos.score === maxScore && maxScore > 0;
+      const part      = document.createElement("div");
+      part.className  = `position-part position-${posNum}`;
+      part.style.width = widthPct(pos.score) + "%";
+      const scoreText = isLeading ? `No.1(${pos.score.toLocaleString()})` : pos.score.toLocaleString();
+      part.innerHTML = `<span class="score position-${posNum}-score score-left-aligned">${scoreText}</span>`;
+      if (isLeading) {
+        const effect = document.createElement("div");
+        effect.className = `widget-multipk-bar-effect${idx === n - 1 ? ' last-position' : ''}`;
+        part.appendChild(effect);
+      }
+      pkBarContainer.appendChild(part);
+      if (idx < n - 1) {
+        const sep = document.createElement("div");
+        sep.className = "widget-multipk-bar-separator";
+        pkBarContainer.appendChild(sep);
+      }
+    });
+  } else {
+    // Chỉ update width + score text → transition chạy mượt
+    positions.forEach((pos, idx) => {
+      const isLeading = pos.score === maxScore && maxScore > 0;
+      const part = existingParts[idx];
+      const newW = widthPct(pos.score) + "%";
+      if (part.style.width !== newW) {
+        requestAnimationFrame(() => {
+          part.style.width = newW;
+        });
+      }
+      const scoreEl = part.querySelector(".score");
+      const scoreText = isLeading ? `No.1(${pos.score.toLocaleString()})` : pos.score.toLocaleString();
+      scoreEl.textContent = scoreText;
+      // Cập nhật hiệu ứng sáng leading
+      let effect = part.querySelector(".widget-multipk-bar-effect");
+      if (isLeading && !effect) {
+        effect = document.createElement("div");
+        effect.className = `widget-multipk-bar-effect${idx === n - 1 ? ' last-position' : ''}`;
+        part.appendChild(effect);
+      } else if (!isLeading && effect) {
+        effect.remove();
+      }
+    });
+  }
+
+  // 3. Render Top Gifters — giữ DOM, chỉ update width
+  const giftRow = document.getElementById("gift-row");
+  const existingGCols = giftRow.querySelectorAll(".gifts-column");
+  if (existingGCols.length !== n) {
+    giftRow.innerHTML = "";
+    positions.forEach((pos, idx) => {
+      const gCol = document.createElement("div");
+      gCol.className = "gifts-column";
+      gCol.style.width = widthPct(pos.score) + "%";
+      gCol.innerHTML = `
+        <div class="gift-container">
+          <div class="gift-icons-wrapper">
+            ${pos.gift_img ? `<img src="${pos.gift_img}" alt="gift" class="gift-icon gift-0">` : ''}
+          </div>
+          <div class="user-avatars"></div>
+        </div>
+      `;
+      giftRow.appendChild(gCol);
+    });
+  } else {
+    positions.forEach((pos, idx) => {
+      const gCol = existingGCols[idx];
+      const newW = widthPct(pos.score) + "%";
+      if (gCol.style.width !== newW) {
+        requestAnimationFrame(() => {
+          gCol.style.width = newW;
+        });
+      }
+    });
+  }
 
   // 4. Bottom Info
   const timerBox = document.getElementById("pk-timer-box");
