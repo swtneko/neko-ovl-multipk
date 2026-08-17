@@ -126,14 +126,19 @@ Idol C | @username"></textarea>
         </div>
 
         <div id="idolTabIo" class="tab-panel">
-          <div class="hint">Định dạng: <b>name|score|link_avatar</b> (mỗi idol 1 dòng). link_avatar có thể bỏ trống.</div>
-          <textarea id="idolIoText" style="width:100%;resize:vertical;min-height:100px;line-height:1.45" placeholder="Idol A|100|https://link-avatar.com/a.jpg&#10;Idol B|50|https://link-avatar.com/b.jpg&#10;Idol C|0"></textarea>
+          <div class="hint">Định dạng: <b>name|username|score|link_avatar</b> (mỗi idol 1 dòng). username/link_avatar có thể bỏ trống.</div>
+          <textarea id="idolIoText" style="width:100%;resize:vertical;min-height:100px;line-height:1.45" placeholder="Idol A|idola_tiktok|100|https://link-avatar.com/a.jpg&#10;Idol B|idolb_tiktok|50|&#10;Idol C||0"></textarea>
           <div class="row" style="margin-top:6px;margin-bottom:0;gap:6px">
             <button class="primary" onclick="importIdols()" style="flex:1">📥 Import (Thêm)</button>
             <button class="blue" onclick="exportIdols()" style="flex:1">📤 Export (Xuất)</button>
             <span id="ioStatus" class="small"></span>
           </div>
         </div>
+      </div>
+
+      <div class="row" style="margin-bottom:8px">
+        <button onclick="fillMissingAvatars()">🔄 Tìm avatar còn thiếu</button>
+        <span id="fillAvatarsStatus" class="small"></span>
       </div>
 
       <div id="idols"></div>
@@ -170,10 +175,10 @@ Idol C | @username"></textarea>
         <button onclick="setDuration()">Đặt thời gian</button>
       </div>
       <div class="pk-actions">
-        <button class="green" onclick="post('/api/timer/start')">▶ Bắt đầu</button>
-        <button class="orange" onclick="post('/api/timer/pause')">⏸ Tạm dừng</button>
-        <button class="red" onclick="post('/api/timer/finish')">⏹ Kết thúc</button>
-        <button onclick="post('/api/timer/reset')">🔄 Reset</button>
+        <button class="green" onclick="pkAction('start')">▶ Bắt đầu</button>
+        <button class="orange" onclick="pkAction('pause')">⏸ Tạm dừng</button>
+        <button class="red" onclick="pkAction('end')">⏹ Kết thúc</button>
+        <button onclick="pkAction('reset')">🔄 Reset</button>
       </div>
     </div>
 
@@ -716,7 +721,7 @@ function exportIdols(){
   const idols=(state?.idols||[]).slice().sort((a,b)=>b.score-a.score);
   const status=document.getElementById("ioStatus");
   if(!idols.length){if(status)status.textContent="⚠ Chưa có idol";return;}
-  const lines=idols.map(i=>[i.name||"",Number(i.score||0),i.avatar||""].join("|"));
+  const lines=idols.map(i=>[i.name||"",i.tiktok_id||"",Number(i.score||0),i.avatar||""].join("|"));
   const ta=document.getElementById("idolIoText");
   if(ta) ta.value=lines.join("\n");
   if(status){status.textContent="✔ Đã export "+idols.length+" idol";setTimeout(()=>status.textContent="",3000);}
@@ -733,15 +738,34 @@ async function importIdols(){
   for(const line of lines){
     const parts=line.split("|");
     const name=(parts[0]||"").trim();
-    const score=parseInt(parts[1]||"0",10)||0;
-    const avatar=(parts[2]||"").trim();
+    const tiktok_id=(parts[1]||"").trim().replace(/^@/,"");
+    const score=parseInt(parts[2]||"0",10)||0;
+    const avatar=(parts[3]||"").trim();
     if(!name){skipped++;continue;}
     try{
-      const r=await post("/api/idol",{name,avatar,score});
+      const r=await post("/api/idol",{name,avatar,tiktok_id,score});
       if(r.ok)added++; else skipped++;
     }catch(e){skipped++;}
   }
   if(status){status.textContent="✔ "+added+" thêm"+(skipped?" · "+skipped+" lỗi":"");setTimeout(()=>status.textContent="",4000);}
+}
+
+async function fillMissingAvatars(){
+  const status=document.getElementById("fillAvatarsStatus");
+  if(status)status.textContent="⏳ Đang quét & gán avatar...";
+  try{
+    const r=await post("/api/idol/fill_avatars");
+    const data=await r.json();
+    if(!status)return;
+    if(!data.ok){status.textContent="⚠ Có lỗi khi quét avatar";return;}
+    if(data.checked===0){
+      status.textContent="Không có idol nào cần tìm avatar (đã có avatar hoặc chưa nhập username).";
+    }else{
+      status.textContent=`✅ Đã gán ${data.filled}/${data.checked} avatar`+(data.failed?`, ${data.failed} không tìm được`:"");
+    }
+  }catch(e){
+    if(status)status.textContent="⚠ Không kết nối được server";
+  }
 }
 
 document.getElementById("idolSearchClear").style.display="none";

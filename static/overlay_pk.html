@@ -287,22 +287,6 @@
     z-index: 1;
   }
 
-  /* Countdown Animation 10s */
-  #countdown-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 999;
-    pointer-events: none;
-    display: none;
-    align-items: center;
-    justify-content: center;
-  }
-  #countdown-overlay.show { display: flex; }
-  #countdown-overlay .countdown-zero img { width: 120px; height: auto; object-fit: contain; }
-  #countdown-overlay .countdown-animation { animation: countPulse 0.8s ease-in-out infinite; }
-  @keyframes countPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.6; } }
 </style>
 </head>
 <body>
@@ -329,12 +313,7 @@
         </div>
       </div>
 
-      <!-- 5. Lớp phủ đếm ngược 10s -->
-      <div id="countdown-overlay">
-        <div class="countdown-zero countdown-animation" id="countdown-digit">
-          <img src="//static.mcastar.net/live_assistant/image/widget_count_0.png" alt="0">
-        </div>
-      </div>
+
 
     </div>
   </div>
@@ -342,7 +321,6 @@
 
 <script>
 let state = null;
-let countdownInterval = null;
 
 function fmtTime(sec) {
   sec = Math.max(0, sec | 0);
@@ -366,43 +344,6 @@ function getAvatarUrl(idol) {
   ctx.textBaseline = "middle";
   ctx.fillText(initial, 20, 20);
   return canvas.toDataURL();
-}
-
-// Hàm chạy đếm ngược 10 giây to màn hình
-function startCountdownEffect(remainingSeconds) {
-  const overlay = document.getElementById("countdown-overlay");
-  const digitContainer = document.getElementById("countdown-digit");
-  
-  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-  overlay.classList.remove("show");
-  
-  if (remainingSeconds > 10 || remainingSeconds < 0) return;
-
-  let current = remainingSeconds;
-  overlay.classList.add("show");
-  
-  const updateDigit = (num) => {
-    if (num === 0) {
-      digitContainer.innerHTML = `<img src="//static.mcastar.net/live_assistant/image/widget_count_0.png" alt="0">`;
-      digitContainer.classList.add("countdown-animation");
-    } else {
-      digitContainer.innerHTML = `<span style="font-size: 80px; font-weight: 900; color: #ff3a3a; text-shadow: 0 0 20px rgba(255,0,0,0.8);">${num}</span>`;
-      digitContainer.classList.remove("countdown-animation");
-    }
-  };
-  
-  updateDigit(current);
-
-  countdownInterval = setInterval(() => {
-    current -= 1;
-    if (current >= 0) {
-      updateDigit(current);
-    } else {
-      clearInterval(countdownInterval);
-      countdownInterval = null;
-      overlay.classList.remove("show");
-    }
-  }, 1000);
 }
 
 function render() {
@@ -467,7 +408,7 @@ function render() {
     col.innerHTML   = `
       <div class="avatar-container">
         <img class="avatar position-${posNum}-avatar" src="${getAvatarUrl(pos)}">
-        ${isLeading ? '<div class="win-label">No.1</div>' : ''}
+        
       </div>
       <div class="nickname-container avatar-display position-${posNum}-nickname">
         <span class="nickname">${pos.name}</span>
@@ -534,12 +475,9 @@ function render() {
     timerEl.textContent = "Stand by";
   } else {
     timerEl.textContent = fmtTime(timer.remaining);
+    // Chỉ hiển thị timer nhỏ ở phía dưới; không hiển thị countdown lớn giữa overlay.
     if (timer.running && timer.remaining <= 10 && timer.remaining >= 0) {
       timerBox.classList.add("urgent");
-      startCountdownEffect(timer.remaining);
-    } else {
-      document.getElementById("countdown-overlay").classList.remove("show");
-      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
     }
   }
 }

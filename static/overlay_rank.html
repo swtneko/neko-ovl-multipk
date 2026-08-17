@@ -105,7 +105,55 @@
 <!-- 👇 DÁN CSS TÙY CHỈNH CỦA BẠN VÀO ĐÂY (sẽ đè lên CSS ở trên) 👇 -->
 <!-- ============================================================ -->
 <style id="custom-css">
-
+/* ===== MultiPK: nền vàng + viền màu theo vị trí PK ===== */
+.widget-mix-rank__item--position1,
+.widget-mix-rank__item--position2,
+.widget-mix-rank__item--position3,
+.widget-mix-rank__item--position4,
+.widget-mix-rank__item--position5 {
+  background-color: rgba(192, 107, 10, 0.8) !important;
+  background-image: url(http://static.mcastar.net/live_assistant/image/rank_bg_animate.png) !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+.widget-mix-rank__item--position1 {
+  outline: 2px solid rgba(var(--multipk-color-1-rgb), 0.9) !important;
+  outline-offset: -2px !important;
+}
+.widget-mix-rank__item--position2 {
+  outline: 2px solid rgba(var(--multipk-color-2-rgb), 0.9) !important;
+  outline-offset: -2px !important;
+}
+.widget-mix-rank__item--position3 {
+  outline: 2px solid rgba(var(--multipk-color-3-rgb), 0.9) !important;
+  outline-offset: -2px !important;
+}
+.widget-mix-rank__item--position4 {
+  outline: 2px solid rgba(var(--multipk-color-4-rgb), 0.9) !important;
+  outline-offset: -2px !important;
+}
+.widget-mix-rank__item--position5 {
+  outline: 2px solid rgba(var(--multipk-color-5-rgb), 0.9) !important;
+  outline-offset: -2px !important;
+}
+/* Chữ màu vàng nhạt như --current */
+.widget-mix-rank__item--position1:before,
+.widget-mix-rank__item--position1 .widget-mix-rank__name,
+.widget-mix-rank__item--position1 .widget-mix-rank__score,
+.widget-mix-rank__item--position2:before,
+.widget-mix-rank__item--position2 .widget-mix-rank__name,
+.widget-mix-rank__item--position2 .widget-mix-rank__score,
+.widget-mix-rank__item--position3:before,
+.widget-mix-rank__item--position3 .widget-mix-rank__name,
+.widget-mix-rank__item--position3 .widget-mix-rank__score,
+.widget-mix-rank__item--position4:before,
+.widget-mix-rank__item--position4 .widget-mix-rank__name,
+.widget-mix-rank__item--position4 .widget-mix-rank__score,
+.widget-mix-rank__item--position5:before,
+.widget-mix-rank__item--position5 .widget-mix-rank__name,
+.widget-mix-rank__item--position5 .widget-mix-rank__score {
+  color: rgba(255, 236, 204, 0.9) !important;
+}
 </style>
 
 </head>
@@ -210,18 +258,10 @@ function render() {
   const pkIds = pkPositions.map(p => p && p.idol_id).filter(Boolean);
   let sliced;
 
-  if (pkIds.length > 0) {
-    const byId = new Map(state.idols.map(idol => [idol.id, idol]));
-    // Hiển thị theo thứ tự điểm tổng cao -> thấp, để Rank vẫn là Rank.
-    const selected = pkIds.map(id => byId.get(id)).filter(Boolean)
-      .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
-    sliced = selected.map((idol, index) => ({ idol, globalRank: index + 1 }))
-      .slice(cfg.from - 1, cfg.to);
-  } else {
-    sliced = sortedAll
-      .map((idol, index) => ({ idol, globalRank: index + 1 }))
-      .slice(cfg.from - 1, cfg.to);
-  }
+  // Luôn hiển thị toàn bộ bảng rank; pkIds chỉ dùng để highlight màu
+  sliced = sortedAll
+    .map((idol, index) => ({ idol, globalRank: index + 1 }))
+    .slice(cfg.from - 1, cfg.to);
 
   if (sliced.length === 0) {
     rankList.innerHTML = "";
@@ -304,14 +344,15 @@ function render() {
     let cls = "";
     if (idol.active) cls += "widget-mix-rank__item--current ";
     if (idol.eliminated) cls += "widget-mix-rank__item--disabled ";
-    li.className = cls.trim();
-    li.setAttribute("data-rank", globalRank);
     const pkIndex = pkIds.indexOf(idol.id);
     if (pkIndex >= 0) {
+      cls += `widget-mix-rank__item--position${pkIndex + 1} `;
       li.setAttribute("data-pk-position", pkIndex + 1);
     } else {
       li.removeAttribute("data-pk-position");
     }
+    li.className = cls.trim();
+    li.setAttribute("data-rank", globalRank);
 
     // Avatar: chỉ cập nhật khi thay đổi
     if (entry.lastAvatar !== idol.avatar) {

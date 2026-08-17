@@ -473,6 +473,7 @@ class IdolIn(BaseModel):
     name: str
     avatar: str = ""
     tiktok_id: str = ""
+    score: int = 0
 
 
 class BatchIdolIn(BaseModel):
@@ -858,6 +859,38 @@ async def api_tiktok_avatar(username: str):
         return {"ok": False, "error": "TikTok không cho phép truy cập avatar lúc này", "username": username}
 
 
+@app.post("/api/idol/fill_avatars")
+async def api_fill_avatars():
+    """
+    Quét toàn bộ idol đang có tiktok_id nhưng chưa có avatar, tự động
+    tìm và gán avatar tương ứng cho từng người.
+    """
+    targets = [i for i in state["idols"] if i.get("tiktok_id") and not i.get("avatar")]
+    filled = []
+    failed = []
+    for idol in targets:
+        try:
+            avatar = await asyncio.to_thread(fetch_tiktok_avatar, idol["tiktok_id"])
+        except Exception as exc:
+            logging.warning("TikTok avatar (fill_avatars) lỗi @%s: %s", idol["tiktok_id"], exc)
+            avatar = ""
+        if avatar:
+            idol["avatar"] = avatar
+            filled.append({"id": idol["id"], "name": idol["name"], "avatar": avatar})
+        else:
+            failed.append({"id": idol["id"], "name": idol["name"], "tiktok_id": idol["tiktok_id"]})
+    if filled:
+        await broadcast_state()
+    return {
+        "ok": True,
+        "checked": len(targets),
+        "filled": len(filled),
+        "failed": len(failed),
+        "filled_list": filled,
+        "failed_list": failed,
+    }
+
+
 # --------------------------------------------------------------------------
 # Idols
 # --------------------------------------------------------------------------
@@ -872,7 +905,7 @@ async def api_add_idol(body: IdolIn):
         "name": name,
         "tiktok_id": normalize_tiktok_id(body.tiktok_id),
         "avatar": body.avatar.strip(),
-        "score": 0,
+        "score": max(0, int(body.score or 0)),
         "active": len(state["idols"]) == 0,
         "eliminated": False,
     }
