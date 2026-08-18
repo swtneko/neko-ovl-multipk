@@ -98,7 +98,7 @@ def make_pk_positions(n: int, old=None) -> list[dict]:
     return result
 
 
-state["pk"]["positions"] = make_pk_positions(3)
+state["pk"]["positions"] = make_pk_positions(2)
 
 
 async def broadcast_state():
@@ -1091,7 +1091,7 @@ async def api_timer_finish():
 
 @app.post("/api/pk/setup")
 async def api_pk_setup(body: PKSetupIn):
-    n = max(3, min(5, int(body.num_positions)))
+    n = max(2, min(5, int(body.num_positions)))
     selected_ids = [body.positions[i].idol_id.strip() for i in range(min(n, len(body.positions))) if body.positions[i].idol_id.strip()]
     if len(selected_ids) != len(set(selected_ids)):
         return {"ok": False, "error": "Không thể chọn cùng một idol cho nhiều vị trí PK"}
@@ -1134,7 +1134,7 @@ async def api_pk_setup(body: PKSetupIn):
 
 @app.post("/api/pk/select")
 async def api_pk_select(body: PKSelectIn):
-    n = max(3, min(5, int(body.num_positions)))
+    n = max(2, min(5, int(body.num_positions)))
     if state["pk"]["status"] == "running":
         return {"ok": False, "error": "Không thể đổi thành viên khi PK đang chạy."}
 
@@ -1173,8 +1173,8 @@ async def api_pk_select(body: PKSelectIn):
 @app.post("/api/pk/start")
 async def api_pk_start():
     positions = state["pk"]["positions"]
-    if len(positions) < 3:
-        return {"ok": False, "error": "PK cần ít nhất 3 vị trí"}
+    if len(positions) < 2:
+        return {"ok": False, "error": "PK cần ít nhất 2 vị trí"}
     missing = [i + 1 for i, p in enumerate(positions) if not p.get("idol_id")]
     if missing:
         return {"ok": False, "error": "Hãy chọn idol trong danh sách cho vị trí: " + ", ".join(map(str, missing))}

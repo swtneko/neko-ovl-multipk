@@ -393,7 +393,7 @@ function render() {
   // Close to the proportions used by MCA:
   // 3 players ≈ 65px minimum each, then score gets the remainder.
   // For 4/5 players the minimum scales down so everybody remains visible.
-  const minPxByCount = {3: 65, 4: 52, 5: 42};
+  const minPxByCount = {2: 80, 3: 65, 4: 52, 5: 42};
   const minPx = minPxByCount[n] || Math.max(34, Math.floor(usablePx / n * 0.18));
   const basePx = Math.min(minPx, Math.floor(usablePx / n));
   const extraPx = Math.max(0, usablePx - basePx * n);
