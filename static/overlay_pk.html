@@ -298,6 +298,33 @@
     transition: width 0.5s ease-out;
   }
 
+  /* === FOG (sương mù ẩn điểm) === */
+  .widget-multipk-bar-fog-all {
+    pointer-events: none;
+    position: absolute;
+    top: 0; left: -3%;
+    z-index: 5;
+    width: 106%;
+    height: 100%;
+    border-radius: var(--radius-m);
+    background-image: url(https://static.mcastar.net/live_assistant/image/widget_atkdef_fog_all.webp);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    background-position: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .3s ease, visibility 0s linear .3s;
+  }
+  .widget-multipk-bar-fog-all.active {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .3s ease, visibility 0s linear;
+  }
+  /* Ẩn text điểm khi fog bật */
+  .fog-hide-score .score {
+    visibility: hidden;
+  }
+
 </style>
 </head>
 <body>
@@ -312,6 +339,7 @@
       <!-- 2. Thanh Bar + Hiệu ứng ánh sáng -->
       <div class="widget-multipk-bar">
         <div class="bar-container" id="pk-bar-container"></div>
+        <div class="widget-multipk-bar-fog-all" id="fog-all"></div>
       </div>
 
       <!-- 3. Hàng Top Gifters -->
@@ -556,6 +584,17 @@ function render() {
       timerBox.classList.add("urgent");
     }
   }
+
+  // 5. Fog — che toàn bộ bar + ẩn điểm
+  const fogAll    = document.getElementById("fog-all");
+  const barCont   = document.getElementById("pk-bar-container");
+  const fogActive = !!(state.pk && state.pk.fog_active);
+  const inLock    = !!(state.pk && state.pk.in_score_lock);
+  const finished  = !!(timer.finished || state.pk?.status === "finished");
+  // Tắt fog khi: hết giờ hoàn toàn, hoặc đang trong thống kê cuối
+  const showFog   = fogActive && !inLock && !finished;
+  if (fogAll)  fogAll.classList.toggle("active", showFog);
+  if (barCont) barCont.classList.toggle("fog-hide-score", showFog);
 }
 
 function connect() {

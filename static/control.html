@@ -72,6 +72,8 @@ button.blue{background:#245d83;border-color:#347fb1}
 .idol.hidden{display:none}
 .gift-catalog{margin-top:8px;border:1px solid #3f3f4a;border-radius:8px;padding:8px;background:#18181e}.gift-catalog-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.gift-catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:5px;margin-top:7px;max-height:260px;overflow:auto}.catalog-gift{display:flex;align-items:center;gap:7px;padding:6px;border:1px solid #33333d;border-radius:7px;background:#202027;color:#eee;text-align:left;cursor:pointer}.catalog-gift:hover{border-color:#7656d9;background:#272432}.catalog-gift img{width:32px;height:32px;object-fit:contain}.catalog-gift .cg-name{font-size:11px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.catalog-gift .cg-meta{font-size:9px;color:#999;display:block}.catalog-empty{font-size:10px;color:#777;padding:8px}.catalog-status{font-size:10px;color:#aaa;margin-top:5px}@media(max-width:600px){body{padding:4px}.layout{gap:4px}.section{padding:8px;border-radius:8px;margin-bottom:6px}input,select,button{font-size:11px;padding:5px 6px}.tab-btn{padding:4px 6px;font-size:10px}.pk-actions button{min-width:0;font-size:10px;padding:5px 4px}}
 
+.badge-fog{display:inline-block;background:#245d83;color:#9cc9ff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:5px}
+.badge-lock{display:inline-block;background:#246b45;color:#70df91;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:5px}
 .pk-gift-select-wrap{display:flex;gap:6px;align-items:stretch;margin-top:6px}.pk-gift-select{flex:1;min-width:0;text-align:left;background:#202027;border:1px solid #3f3f4a;padding:6px 8px;min-height:46px}.pk-gift-select:hover{border-color:#7656d9;background:#292431}.pk-gift-select>span{display:flex;align-items:center;gap:8px;min-width:0}.pk-gift-select img{width:32px;height:32px;object-fit:contain;flex:none}.pk-gift-select b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pk-gift-select small{display:block;color:#999;font-size:9px;margin-top:2px}.pk-gift-placeholder{color:#aaa;font-size:11px}.pk-gift-clear{width:34px;background:#33333d}.pk-gift-picker{display:none;position:fixed;z-index:99999;width:350px;max-width:calc(100vw - 16px);background:#202027;border:1px solid #4a4a55;border-radius:9px;box-shadow:0 12px 35px rgba(0,0,0,.55);padding:8px}.pk-gift-picker.show{display:block}.pk-gift-picker-head{display:flex;align-items:center;gap:7px;margin-bottom:7px}.pk-gift-picker-head b{flex:1;font-size:12px}.pk-gift-picker-head span{font-size:9px;color:#888}.pk-gift-picker-head button{padding:3px 7px}.pk-gift-picker>input{width:100%;margin-bottom:6px}.pk-gift-picker-list{max-height:350px;overflow:auto;display:flex;flex-direction:column;gap:3px}.pk-gift-item{display:flex;align-items:center;gap:8px;width:100%;padding:6px 7px;background:#292930;border:1px solid #3b3b46;border-radius:6px;text-align:left;color:#eee}.pk-gift-item:hover,.pk-gift-item.selected{background:#34313e;border-color:#7656d9}.pk-gift-item img{width:34px;height:34px;object-fit:contain;flex:none}.pk-gift-item-text{min-width:0;display:flex;flex-direction:column}.pk-gift-item-text b{font-size:11px;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pk-gift-item-text small{font-size:9px;color:#999;margin-top:2px}.pk-gift-empty{padding:16px;text-align:center;color:#777;font-size:11px}
 </style>
 </head>
@@ -181,6 +183,31 @@ Idol C | @username"></textarea>
         <button class="red" onclick="pkAction('end')">⏹ Kết thúc</button>
         <button onclick="pkAction('reset')">🔄 Reset</button>
       </div>
+    </div>
+
+    <div class="section" id="pkAdvancedSection">
+      <h2>⚙️ Cài đặt PK nâng cao</h2>
+
+      <h3>🌫️ Chế độ sương mù (ẩn điểm)</h3>
+      <div class="pk-state" id="fogStateInfo" style="color:#c8baff">Sương mù: <b>Tắt</b></div>
+      <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+        <button id="fogToggleBtn" class="blue" onclick="toggleFog()" style="min-width:120px">🌫️ Bật sương mù</button>
+        <label class="small" style="white-space:nowrap">Bật khi còn</label>
+        <input id="fogDelay" type="number" min="0" max="3600" value="0" style="width:70px" title="Số giây còn lại thì bật fog (0 = bật ngay từ đầu)">
+        <label class="small">giây</label>
+        <button onclick="saveFogSettings()" class="primary" style="padding:7px 10px">Lưu</button>
+      </div>
+      <div class="small" style="margin-top:4px;color:#888">Bật sương mù khi đồng hồ còn N giây. Đặt 0 để bật ngay từ đầu hiệp. Trên overlay, thanh điểm sẽ bị che — người xem không biết ai đang dẫn.</div>
+
+      <h3>⏳ Thống kê cuối hiệp (điểm không bị hụt)</h3>
+      <div class="pk-state" id="scoreLockStateInfo" style="color:#ffd66e">Thống kê cuối: <b>5 giây</b></div>
+      <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+        <label class="small" style="white-space:nowrap">Giây thống kê sau khi hết giờ:</label>
+        <input id="scoreLockDuration" type="number" min="0" max="60" value="5" style="width:70px">
+        <label class="small">giây</label>
+        <button onclick="saveScoreLock()" class="primary" style="padding:7px 10px">Lưu</button>
+      </div>
+      <div class="small" style="margin-top:4px;color:#888">Khi timer về 0, hệ thống sẽ chờ thêm N giây trước khi kết thúc hẳn. Trong thời gian này gift vẫn được tính — tránh mất điểm của user gửi vào những giây cuối. Đặt 0 để tắt.</div>
     </div>
 
     <div class="section">
@@ -768,6 +795,86 @@ async function fillMissingAvatars(){
     if(status)status.textContent="⚠ Không kết nối được server";
   }
 }
+
+// ── Fog (sương mù) ──────────────────────────────────────────────────────────
+let fogEnabled = false;
+
+function toggleFog(){
+  fogEnabled = !fogEnabled;
+  saveFogSettings();
+}
+
+async function saveFogSettings(){
+  const delay = Math.max(0, parseInt(document.getElementById("fogDelay").value||"0"));
+  await post("/api/pk/fog", {enabled: fogEnabled, duration: delay});
+  // state sẽ cập nhật qua WS
+}
+
+async function saveScoreLock(){
+  const sec = Math.max(0, parseInt(document.getElementById("scoreLockDuration").value||"0"));
+  await post("/api/pk/score_lock", {duration: sec});
+}
+
+function renderFogState(){
+  if(!state) return;
+  const pk = state.pk||{};
+  fogEnabled = !!pk.fog_enabled;
+
+  const btn = document.getElementById("fogToggleBtn");
+  if(btn){
+    if(fogEnabled){
+      btn.textContent = "🌫️ Tắt sương mù";
+      btn.className = "orange";
+    } else {
+      btn.textContent = "🌫️ Bật sương mù";
+      btn.className = "blue";
+    }
+  }
+
+  const delay = document.getElementById("fogDelay");
+  if(delay && document.activeElement !== delay){
+    delay.value = pk.fog_duration||0;
+  }
+
+  const info = document.getElementById("fogStateInfo");
+  if(info){
+    const active = pk.fog_active ? ' <span class="badge-fog">ĐANG BẬT</span>' : '';
+    if(fogEnabled){
+      const d = pk.fog_duration||0;
+      info.innerHTML = `Sương mù: <b style="color:#9cc9ff">Bật</b> — kích hoạt sau <b>${d}</b> giây từ đầu hiệp${active}`;
+    } else {
+      info.innerHTML = `Sương mù: <b>Tắt</b>`;
+    }
+  }
+
+  const lockInfo = document.getElementById("scoreLockStateInfo");
+  const lockInput = document.getElementById("scoreLockDuration");
+  if(lockInput && document.activeElement !== lockInput){
+    lockInput.value = pk.score_lock_duration??5;
+  }
+  if(lockInfo){
+    const sec = pk.score_lock_duration??5;
+    const inLock = pk.in_score_lock;
+    const lockRem = pk.score_lock_remaining||0;
+    if(inLock){
+      lockInfo.innerHTML = `Thống kê cuối: <b style="color:#ffd66e">Đang đếm — còn ${lockRem}s</b> <span class="badge-lock">ĐANG THU</span>`;
+    } else if(sec > 0){
+      lockInfo.innerHTML = `Thống kê cuối: <b style="color:#ffd66e">${sec} giây</b> sau khi hết giờ`;
+    } else {
+      lockInfo.innerHTML = `Thống kê cuối: <b>Tắt</b>`;
+    }
+  }
+}
+
+// ── Override render để gọi thêm fog/lock render ──────────────────────────────
+const _origRender = render;
+// Không override — gọi thẳng từ connect WS handler
+// Thay vào đó patch vào cuối render() bằng cách wrap ở đây:
+const _renderOrig = render;
+window.render = function(){
+  _renderOrig();
+  renderFogState();
+};
 
 document.getElementById("idolSearchClear").style.display="none";
 buildPkGiftPicker();
