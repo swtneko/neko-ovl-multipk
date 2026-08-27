@@ -51,6 +51,12 @@ state = {
         "status": "standby",  # standby | running | paused | finished
         "positions": [],
         "assignments": {},
+        # Sương mù: ẩn điểm trên overlay khi đang chạy
+        "fog_enabled": False,       # bật/tắt chế độ sương mù
+        "fog_duration": 0,          # giây kích hoạt fog kể từ khi bắt đầu (0 = ngay lập tức)
+        # Thống kê cuối: vẫn nhận gift trong N giây sau khi timer hết
+        "score_lock_duration": 5,   # giây thống kê cuối (gift vẫn tính, bar ẩn fog nếu bật)
+        "in_score_lock": False,     # đang trong giai đoạn thống kê cuối
     },
     "accepting_gifts": False,
     "gift_catalog": [],
@@ -238,7 +244,7 @@ def route_pk_gift(event: GiftEvent) -> Optional[int]:
        chính gift chuyển phe đó cũng tính điểm cho vị trí mới.
     5) Gift không phải gift chọn phe của user chưa được gán thì bỏ qua.
     """
-    if state["pk"]["status"] != "running":
+    if state["pk"]["status"] != "running" and not state["pk"].get("in_score_lock"):
         return None
 
     sender_key = get_sender_key(event)
@@ -309,7 +315,8 @@ async def connect_room(unique_id: str):
 
     @client.on(GiftEvent)
     async def on_gift(event: GiftEvent):
-        if not state["accepting_gifts"]:
+        # Nhận gift cả khi đang trong giai đoạn thống kê cuối (score_lock)
+        if not state["accepting_gifts"] and not state["pk"].get("in_score_lock"):
             return
 
         gift_id = get_gift_id(event)
@@ -399,19 +406,61 @@ async def timer_loop():
     while True:
         await asyncio.sleep(1)
         t = state["timer"]
+        pk = state["pk"]
+
+        # ── Giai đoạn thống kê cuối (score_lock): vẫn nhận gift ──
+        if pk.get("in_score_lock"):
+            lock_rem = pk.get("score_lock_remaining", 0) - 1
+            pk["score_lock_remaining"] = max(0, lock_rem)
+            if pk["score_lock_remaining"] <= 0:
+                # Hết giai đoạn thống kê → kết thúc thật sự
+                pk["in_score_lock"] = False
+                t["finished"] = True
+                t["running"] = False
+                state["accepting_gifts"] = False
+                if pk["status"] == "running":
+                    pk["status"] = "finished"
+                    pk["enabled"] = True
+                    await disconnect_pk_rooms()
+            await broadcast_state()
+            continue
+
         if not t["running"] or t["remaining"] <= 0:
             continue
 
         t["remaining"] -= 1
+
+        # ── Kích hoạt fog theo fog_duration ──
+        if pk.get("fog_enabled"):
+            dur = int(pk.get("fog_duration", 0))
+            if dur == 0:
+                # 0 = bật ngay từ đầu
+                pk["fog_active"] = True
+            else:
+                # Bật khi đồng hồ còn <= fog_duration giây
+                pk["fog_active"] = t["remaining"] <= dur
+        else:
+            pk["fog_active"] = False
+
         if t["remaining"] <= 0:
             t["remaining"] = 0
             t["running"] = False
-            t["finished"] = True
-            state["accepting_gifts"] = False
-            if state["pk"]["status"] == "running":
-                state["pk"]["status"] = "finished"
-                state["pk"]["enabled"] = True
-                await disconnect_pk_rooms()
+
+            lock_sec = int(pk.get("score_lock_duration", 0))
+            if lock_sec > 0 and pk["status"] == "running":
+                # Bắt đầu giai đoạn thống kê cuối — gift vẫn tính
+                pk["in_score_lock"] = True
+                pk["score_lock_remaining"] = lock_sec
+                # Timer hiển thị hết, nhưng gift vẫn được nhận
+                # finished chưa set — overlay biết qua in_score_lock
+            else:
+                t["finished"] = True
+                state["accepting_gifts"] = False
+                if pk["status"] == "running":
+                    pk["status"] = "finished"
+                    pk["enabled"] = True
+                    await disconnect_pk_rooms()
+
         await broadcast_state()
 
 
@@ -514,6 +563,15 @@ class PKPointsIn(BaseModel):
 class PKSelectIn(BaseModel):
     num_positions: int
     positions: list[PKPositionIn]
+
+
+class PKFogIn(BaseModel):
+    enabled: bool
+    duration: int = 0   # giây kể từ khi bắt đầu, 0 = ngay lập tức
+
+
+class PKScoreLockIn(BaseModel):
+    duration: int = 5   # giây thống kê cuối (0 = tắt)
 
 
 # --------------------------------------------------------------------------
@@ -1187,6 +1245,13 @@ async def api_pk_start():
     reset_pk_assignments()
     state["pk"]["enabled"] = True
     state["pk"]["status"] = "running"
+    state["pk"]["in_score_lock"] = False
+    state["pk"]["score_lock_remaining"] = 0
+    # fog_active bắt đầu theo fog_duration: nếu duration=0 thì bật ngay
+    if state["pk"].get("fog_enabled"):
+        state["pk"]["fog_active"] = state["pk"].get("fog_duration", 0) == 0
+    else:
+        state["pk"]["fog_active"] = False
     state["timer"]["running"] = True
     state["timer"]["finished"] = False
     if state["timer"]["remaining"] <= 0:
@@ -1212,6 +1277,9 @@ async def api_pk_pause():
 async def api_pk_end():
     await disconnect_pk_rooms()
     state["pk"]["status"] = "finished"
+    state["pk"]["in_score_lock"] = False
+    state["pk"]["score_lock_remaining"] = 0
+    state["pk"]["fog_active"] = False
     state["timer"]["running"] = False
     state["timer"]["finished"] = True
     state["timer"]["remaining"] = 0
@@ -1225,6 +1293,9 @@ async def api_pk_reset():
     await disconnect_pk_rooms()
     state["pk"]["status"] = "standby"
     state["pk"]["round"] = 1
+    state["pk"]["in_score_lock"] = False
+    state["pk"]["score_lock_remaining"] = 0
+    state["pk"]["fog_active"] = False
     state["timer"]["remaining"] = state["timer"]["duration"]
     state["timer"]["running"] = False
     state["timer"]["finished"] = False
@@ -1240,6 +1311,34 @@ async def api_pk_points(body: PKPointsIn):
     if 0 <= body.index < len(state["pk"]["positions"]):
         add_pk_points(body.index, int(body.delta))
         await broadcast_state()
+    return {"ok": True}
+
+
+@app.post("/api/pk/fog")
+async def api_pk_fog(body: PKFogIn):
+    """Bật/tắt chế độ sương mù và đặt số giây trễ kích hoạt."""
+    pk = state["pk"]
+    pk["fog_enabled"] = bool(body.enabled)
+    pk["fog_duration"] = max(0, int(body.duration))
+    # Nếu đang chạy, tính lại fog_active ngay
+    if pk["status"] == "running":
+        t = state["timer"]
+        dur = int(pk["fog_duration"])
+        if pk["fog_enabled"]:
+            pk["fog_active"] = (dur == 0) or (t["remaining"] <= dur)
+        else:
+            pk["fog_active"] = False
+    else:
+        pk["fog_active"] = False
+    await broadcast_state()
+    return {"ok": True}
+
+
+@app.post("/api/pk/score_lock")
+async def api_pk_score_lock(body: PKScoreLockIn):
+    """Đặt số giây thống kê cuối (gift vẫn tính sau khi timer về 0)."""
+    state["pk"]["score_lock_duration"] = max(0, int(body.duration))
+    await broadcast_state()
     return {"ok": True}
 
 
